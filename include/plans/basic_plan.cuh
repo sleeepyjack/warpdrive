@@ -32,10 +32,10 @@ public:
     {
     public:
 
-        config_t(index_t lvl1_max          = 1000,
+        config_t(index_t lvl1_max          = 100000,
                  index_t lvl2_max          = 1,
                  index_t blocks_per_grid   = std::numeric_limits<index_t>::max(),
-                 index_t threads_per_block = 1024)
+                 index_t threads_per_block = 256)
                  :
                  //outer probing scheme (random hashing)
                  lvl1_max(lvl1_max),
@@ -106,7 +106,6 @@ public:
                               && (lvl2 < config.lvl2_max);
                               ++lvl2)
                     {
-
                         const auto lvl2_offset = lvl2 * group.size()
                                                + group.thread_rank();
 
