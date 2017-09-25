@@ -9,7 +9,7 @@ class IgnoreFailurePolicy
 
 public:
 
-    using return_t = int;
+    using data_t = int;
 
     HOSTQUALIFIER INLINEQUALIFIER
     explicit IgnoreFailurePolicy()
@@ -37,7 +37,7 @@ public:
     }
 
     HOSTDEVICEQUALIFIER INLINEQUALIFIER
-    return_t fetch(const cudaStream_t& stream = 0) const
+    data_t fetch(const cudaStream_t& stream = 0) const
     {
         return 0;
     }
@@ -49,7 +49,7 @@ class PrintIdFailurePolicy
 
 public:
 
-    using return_t = int;
+    using data_t = int;
 
     HOSTDEVICEQUALIFIER INLINEQUALIFIER
     explicit PrintIdFailurePolicy()
@@ -73,19 +73,21 @@ public:
     DEVICEQUALIFIER INLINEQUALIFIER
     void handle(const Failure& msg) const
     {
-        printf("Fault at block (%u, %u, %u) in thread (%u, %u, %u)\n",
-            blockIdx.x, blockIdx.y, blockIdx.y,
-            threadIdx.x, threadIdx.y, threadIdx.z);
+        printf("Failure in block (%u, %u, %u) in thread (%u, %u, %u)\n",
+               blockIdx.x, blockIdx.y, blockIdx.y,
+               threadIdx.x, threadIdx.y, threadIdx.z);
     }
 
     HOSTDEVICEQUALIFIER INLINEQUALIFIER
-    return_t fetch(const cudaStream_t& stream = 0) const
+    data_t fetch(const cudaStream_t& stream = 0) const
     {
         return 0;
     }
 
 };
 
+//TODO implement failure policies that have states but do not block
+/*
 class BooleanFailurePolicy
 {
 
@@ -96,6 +98,7 @@ public:
     HOSTQUALIFIER INLINEQUALIFIER
     explicit BooleanFailurePolicy()
     {
+        //FIXME malloc blocks
         cudaMalloc(&failure_happened, sizeof(return_t)); CUERR
     }
 
@@ -148,6 +151,7 @@ public:
     HOSTQUALIFIER INLINEQUALIFIER
     explicit CountFailurePolicy()
     {
+        //FIXME malloc blocks
         cudaMalloc(&count, sizeof(return_t)); CUERR
     }
 
@@ -186,3 +190,4 @@ private:
     return_t * count = nullptr;
 
 };
+*/
