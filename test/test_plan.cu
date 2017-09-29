@@ -39,9 +39,20 @@ int main(int argc, char const *argv[]) {
     using key_t   = data_p::key_t;
 
     // params
-    const index_t len_data = atoi(argv[1]);
+    const index_t len_data = 1UL << atoi(argv[1]);
     const float   load     = atof(argv[2]);
     const index_t capacity = len_data/load;
+    const index_t lvl1_max = atoi(argv[3]);
+    const index_t lvl2_max = atoi(argv[4]);
+    const index_t blocks_per_grid = (atoi(argv[5]) != 0) ? atoi(argv[5]): std::numeric_limits<index_t>::max();
+    const index_t threads_per_block = atoi(argv[6]);   
+ 
+    plan_t::config_t config(lvl1_max,
+                            lvl2_max,
+                            blocks_per_grid,
+                            threads_per_block);
+
+    cudaSetDevice(atoi(argv[7])); CUERR
 
     // generate data
     data_t * data1_h = new data_t[len_data];
@@ -66,7 +77,7 @@ int main(int argc, char const *argv[]) {
     failure_handler.init();
 
     TIMERSTART(insert)
-    plan_t::table_operation<plan_t::table_op_t::insert>(data1_d, len_data, hash_table_d, capacity, failure_handler);
+    plan_t::table_operation<plan_t::table_op_t::insert>(data1_d, len_data, hash_table_d, capacity, failure_handler, 0, config);
     TIMERSTOP(insert)
 
     cudaDeviceSynchronize(); CUERR
@@ -76,7 +87,7 @@ int main(int argc, char const *argv[]) {
 
 
     TIMERSTART(retrieve)
-    plan_t::table_operation<plan_t::table_op_t::retrieve>(data2_d, len_data, hash_table_d, capacity, failure_handler);
+    plan_t::table_operation<plan_t::table_op_t::retrieve>(data2_d, len_data, hash_table_d, capacity, failure_handler, 0, config);
     TIMERSTOP(retrieve)
 
     cudaDeviceSynchronize(); CUERR
