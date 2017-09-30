@@ -5,7 +5,6 @@
 #include <limits>
 
 #include "cuda_helpers.cuh"
-#include "cooperative_groups.h"
 
 namespace cg = cooperative_groups; //FIXME namespace pollution
 

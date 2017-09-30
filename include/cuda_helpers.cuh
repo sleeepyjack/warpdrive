@@ -117,7 +117,7 @@ GLOBALQUALIFIER void generic_kernel(func_t f)
     f();
 }
 
-DEVICEQUALIFIER INLINEQUALIFIER unsigned int laneID() {
+DEVICEQUALIFIER INLINEQUALIFIER unsigned int lane_id() {
     unsigned int lane;
     asm volatile("mov.u32 %0, %%laneid;" : "=r"(lane));
     return lane;
@@ -139,9 +139,9 @@ DEVICEQUALIFIER INLINEQUALIFIER index_t atomicAggInc(index_t * ctr)
 }
 #else
 template<typename index_t> //index_t either unsigned int or unsigned long long int
-DEVICEQUALIFIER INLINEQUALIFIER index_t atomicAggInc(index_t * ctr, index_t id)
+DEVICEQUALIFIER INLINEQUALIFIER index_t atomicAggInc(index_t * ctr)
 {
-    int lane = id % 32;
+    int lane = lane_id();
     //check if thread is active
     int mask = __ballot(1);
     //determine first active lane for atomic add
@@ -153,6 +153,62 @@ DEVICEQUALIFIER INLINEQUALIFIER index_t atomicAggInc(index_t * ctr, index_t id)
     //compute index for each thread
     return res + __popc(mask & ((1 << lane) -1));
 }
+
+//FIXME this hack is so dirrrty x-tina would be proud
+namespace cooperative_groups
+{
+
+    DEVICEQUALIFIER INLINEQUALIFIER
+    int this_thread_block()
+    {
+        return 0; //not needed
+    }
+
+    template<unsigned int Size>
+    class tiled_partition
+    {
+        const unsigned int mask = ((1ULL<<Size)-1)<<((Size*threadIdx.y)%32);
+    public:
+
+        DEVICEQUALIFIER
+        tiled_partition(int ignore)
+        {
+
+        }
+
+        DEVICEQUALIFIER INLINEQUALIFIER
+        unsigned int size() const
+        {
+            return Size;
+        }
+
+        DEVICEQUALIFIER INLINEQUALIFIER
+        unsigned int thread_rank() const
+        {
+            return threadIdx.x;
+        }
+
+        DEVICEQUALIFIER INLINEQUALIFIER
+        unsigned int ballot(bool pred) const
+        {
+            return ((_mask & __ballot(pred)) >> (Size*threadIdx.y));
+        }
+
+        DEVICEQUALIFIER INLINEQUALIFIER
+        bool any(bool pred) const
+        {
+            return (ballot(pred) != 0);
+        }
+
+        DEVICEQUALIFIER INLINEQUALIFIER
+        bool all(bool pred) const
+        {
+            return (ballot(pred) == mask);
+        }
+    };
+
+
+} //cooperative groups
 
 #endif
 

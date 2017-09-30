@@ -202,7 +202,7 @@ private:
     };
 
     DEVICEQUALIFIER INLINEQUALIFIER
-    static auto get_group_id()
+    static unsigned int get_group_id()
     {
         return blockDim.y * blockIdx.x + threadIdx.y;
     }

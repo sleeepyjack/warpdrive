@@ -145,7 +145,7 @@ public:
 
     template<class Hasher = warpdrive::hashers::mueller_hash_uint32_t>
     HOSTDEVICEQUALIFIER INLINEQUALIFIER
-    static auto hash(const key_t& key, const key_t& i = 0)
+    static typename Hasher::data_t hash(const key_t& key, const key_t& i = 0)
     {
         return Hasher::hash(key + i);
     }
