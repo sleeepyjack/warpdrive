@@ -71,8 +71,8 @@ public:
         const auto groups_per_block = SDIV(config.threads_per_block, group_size);
         const auto blocks_needed    = SDIV(len_data, groups_per_block);
 
-        dim3 block_dim(group_size, groups_per_block, 1);
-        dim3 grid_dim(std::min(blocks_needed, config.blocks_per_grid), 1, 1);
+        const dim3 block_dim(group_size, groups_per_block, 1);
+        const dim3 grid_dim(std::min(blocks_needed, config.blocks_per_grid), 1, 1);
 
         generic_kernel
         <<<grid_dim, block_dim, 0, stream>>>

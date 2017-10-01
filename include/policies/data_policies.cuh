@@ -154,6 +154,8 @@ public:
     {
     public:
 
+        static constexpr value_t identity = 0;
+
         DEVICEQUALIFIER INLINEQUALIFIER
         static void op(data_t * address, const data_t& value)
         {
@@ -164,6 +166,8 @@ public:
     class update_op
     {
     public:
+
+        static constexpr value_t identity = 0;
 
         DEVICEQUALIFIER INLINEQUALIFIER
         static void op(data_t * address, const data_t& value)
@@ -177,6 +181,8 @@ public:
     {
     public:
 
+        static constexpr value_t identity = 0;
+
         DEVICEQUALIFIER INLINEQUALIFIER
         static void op(data_t * address, const data_t& value)
         {
@@ -188,6 +194,8 @@ public:
     class count_op
     {
     public:
+
+        static constexpr value_t identity = 0;
 
         DEVICEQUALIFIER INLINEQUALIFIER
         static void op(data_t * address, const data_t& value)
@@ -207,6 +215,8 @@ public:
     class count_clamped_op
     {
     public:
+
+        static constexpr value_t identity = 0;
 
         DEVICEQUALIFIER INLINEQUALIFIER
         static void op(data_t * address, const data_t& value)
