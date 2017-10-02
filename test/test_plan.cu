@@ -8,8 +8,6 @@ int main(int argc, char const *argv[]) {
     using namespace warpdrive;
     using namespace std;
 
-    cout << "================= WARPDRIVE ================" << endl;
-
     if (argc < 9)
     {
         cerr << "ERROR: Not enough parameters (read \"PARAMS\" section inside the main function)" << endl;
@@ -23,7 +21,7 @@ int main(int argc, char const *argv[]) {
     //the size of the thread groups (must be available at compile time)
     static constexpr index_t group_size = 16;
     //output verbosity (must be available at compile time)
-    static constexpr index_t verbosity = 1;
+    static constexpr index_t verbosity = 0;
     //filename for test data (dumped with binary_io.h)
     const string  filename = argv[1];
     //length of test data
@@ -42,9 +40,10 @@ int main(int argc, char const *argv[]) {
     const index_t threads_per_block = atoi(argv[7]);
     //id of selected CUDA device
     const index_t device_id = atoi(argv[8]);
-
+    
     if (verbosity > 0)
     {
+        cout << "================= WARPDRIVE ================" << endl;
         cout << "================== PARAMS =================="
              << "\n(static) group_size=" << group_size
              << "\n(static) verbosity=" << verbosity
@@ -100,7 +99,10 @@ int main(int argc, char const *argv[]) {
     data_t * data_d; cudaMalloc(&data_d, sizeof(data_t)*len_data); CUERR
 
     //TESTS/BENCHMARKS
-    cout << "============= TESTS/BENCHMARK =============" << endl;
+    if (verbosity > 0)
+    {
+        cout << "============= TESTS/BENCHMARK =============" << endl;
+    }
 
     //init failure handler
     failure_p failure_handler = failure_p();
@@ -153,7 +155,7 @@ int main(int argc, char const *argv[]) {
         }
     }
 
-    cout << "errors: " << num_errors << endl;
+    cout << "ERRORS: " << num_errors << endl;
 
     //free memory
     delete[] keys_h;
