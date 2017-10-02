@@ -1,31 +1,24 @@
-#ifndef BINARY_IO_H
-#define BINARY_IO_H
+#pragma once
 
 #include <string>
 #include <fstream>
 
-using namespace std;
-
 template <typename T>
-void dump_binary(
-    const T * data,
-    const size_t length,
-    string filename) {
-
-    ofstream ofile(filename.c_str(), ios::binary);
+void dump_binary(const T * data,
+                 const size_t length,
+                 const std::string& filename)
+{
+    std::ofstream ofile(filename, std::ios::binary);
     ofile.write((char*) data, sizeof(T)*length);
     ofile.close();
 }
 
 template <typename T>
-void load_binary(
-    const T * data,
-    const size_t length,
-    string filename) {
-
-    ifstream ifile(filename.c_str(), ios::binary);
+void load_binary(const T * data,
+                 const size_t length,
+                 const std::string& filename)
+{
+    std::ifstream ifile(filename, std::ios::binary);
     ifile.read((char*) data, sizeof(T)*length);
     ifile.close();
 }
-
-#endif

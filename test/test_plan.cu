@@ -89,25 +89,35 @@ int main(int argc, char const *argv[]) {
     cudaSetDevice(device_id); CUERR
 
     //load random keys
-    key_t * keys_h = (key_t*)malloc(sizeof(key_t)*len_data);
-    load_binary(keys_h, len_data, filename);
+    key_t * keys_h = new key_t[len_data];
+    load_binary<key_t>(keys_h, len_data, filename);
 
     //the hash table
     data_t * hash_table_d; cudaMalloc(&hash_table_d, sizeof(data_t)*capacity); CUERR
 
     //test data
-    data_t * data_h = (data_t*)malloc(sizeof(data_t)*len_data);
+    data_t * data_h = new data_t[len_data];
     data_t * data_d; cudaMalloc(&data_d, sizeof(data_t)*len_data); CUERR
 
     //TESTS/BENCHMARKS
     cout << "============= TESTS/BENCHMARK =============" << endl;
 
-    cout << "TASK: insert (ignore duplicates):" << endl;
-    
+    //init failure handler
+    failure_p failure_handler = failure_p();
+    failure_handler.init();
+
+    //the first task to execute
+    using elem_op_1 = data_p::nop_op;
+    static constexpr auto table_op_1 = plan_t::table_op_t::insert;
+
+    //the second task to execute
+    using elem_op_2 = data_p::nop_op;
+    static constexpr auto table_op_2 = plan_t::table_op_t::retrieve;
+
     //init hash table
     memset_kernel
     <<<SDIV(capacity, 1024), 1024>>>
-    (hash_table_d, capacity, data_t(data_p::empty_key, data_p::nop_op::identity));
+    (hash_table_d, capacity, data_t(data_p::empty_key, elem_op_1::identity));
 
     //init input data
     #pragma omp parallel for
@@ -117,23 +127,37 @@ int main(int argc, char const *argv[]) {
     }
     cudaMemcpy(data_d, data_h, sizeof(data_t)*len_data, H2D); CUERR
 
-    //init failure handler
-    failure_p failure_handler = failure_p();
-    failure_handler.init();
-
     //execute task
-    TIMERSTART(insert_nop)
-    plan_t::table_operation
-    <plan_t::table_op_t::insert,
-     data_p::nop_op>
+    TIMERSTART(op1)
+    plan_t::table_operation<table_op_1,
+                            elem_op_1>
     (data_d, len_data, hash_table_d, capacity, failure_handler, 0, config);
-    TIMERSTOP(insert_nop)
+    TIMERSTOP(op1)
 
-    //TODO add more tasks and validation
+    //retrieve results
+    TIMERSTART(op2)
+    plan_t::table_operation<table_op_2,
+                            elem_op_2>
+    (data_d, len_data, hash_table_d, capacity, failure_handler, 0, config);
+    TIMERSTOP(op2)
+
+    cudaMemcpy(data_h, data_d, sizeof(data_t)*len_data, D2H); CUERR
+
+    //validation
+    index_t num_errors = 0;
+    #pragma omp parallel for reduction(+:num_errors)
+    for (index_t i = 0; i < len_data; i++) {
+        if (data_h[i].get_value() != i)
+        {
+            num_errors += 1;
+        }
+    }
+
+    cout << "errors: " << num_errors << endl;
 
     //free memory
-    free(keys_h);
-    free(data_h);
+    delete[] keys_h;
+    delete[] data_h;
 
     cudaFree(hash_table_d);
     cudaFree(data_d);
