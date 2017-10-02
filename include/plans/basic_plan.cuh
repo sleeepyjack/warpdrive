@@ -21,7 +21,6 @@ public:
     static constexpr index_t group_size = GroupSize;
     static constexpr key_t   nil_key    = DataPolicy::empty_key;
     static constexpr key_t   tomb_key   = DataPolicy::tomb_key;
-    static constexpr value_t init_val   = DataPolicy::init_val;
 
     enum class table_op_t
     {

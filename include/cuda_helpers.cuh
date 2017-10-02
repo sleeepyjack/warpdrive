@@ -191,7 +191,7 @@ namespace cooperative_groups
         DEVICEQUALIFIER INLINEQUALIFIER
         unsigned int ballot(bool pred) const
         {
-            return ((_mask & __ballot(pred)) >> (Size*threadIdx.y));
+            return ((mask & __ballot(pred)) >> (Size*threadIdx.y));
         }
 
         DEVICEQUALIFIER INLINEQUALIFIER
