@@ -40,7 +40,7 @@ int main(int argc, char const *argv[]) {
     const index_t threads_per_block = atoi(argv[7]);
     //id of selected CUDA device
     const index_t device_id = atoi(argv[8]);
-    
+
     if (verbosity > 0)
     {
         cout << "================= WARPDRIVE ================" << endl;
@@ -125,7 +125,7 @@ int main(int argc, char const *argv[]) {
     #pragma omp parallel for
     for (index_t i = 0; i < len_data; i++)
     {
-        data_h[i] = data_t(keys_h[i], i);
+        data_h[i] = data_t(keys_h[i], i+1);
     }
     cudaMemcpy(data_d, data_h, sizeof(data_t)*len_data, H2D); CUERR
 
@@ -135,6 +135,14 @@ int main(int argc, char const *argv[]) {
                             elem_op_1>
     (data_d, len_data, hash_table_d, capacity, failure_handler, 0, config);
     TIMERSTOP(op1)
+
+    //re-init data
+    #pragma omp parallel for
+    for (index_t i = 0; i < len_data; i++)
+    {
+        data_h[i].set_value(elem_op_2::identity);
+    }
+    cudaMemcpy(data_d, data_h, sizeof(data_t)*len_data, H2D); CUERR
 
     //retrieve results
     TIMERSTART(op2)
@@ -149,7 +157,7 @@ int main(int argc, char const *argv[]) {
     index_t num_errors = 0;
     #pragma omp parallel for reduction(+:num_errors)
     for (index_t i = 0; i < len_data; i++) {
-        if (data_h[i].get_value() != i)
+        if (data_h[i].get_value() != i+1)
         {
             num_errors += 1;
         }

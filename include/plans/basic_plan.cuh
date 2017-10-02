@@ -33,7 +33,7 @@ public:
 
         config_t(index_t lvl1_max          = 100000,
                  index_t lvl2_max          = 1,
-                 index_t blocks_per_grid   = std::numeric_limits<index_t>::max(),
+                 index_t blocks_per_grid   = std::numeric_limits<uint32_t>::max(),
                  index_t threads_per_block = 256)
                  :
                  //outer probing scheme (random hashing)
