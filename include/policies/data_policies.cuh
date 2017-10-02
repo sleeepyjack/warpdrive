@@ -39,7 +39,6 @@ public:
     static constexpr payload_t mask_val  = (1UL << bits_val)-1;
     static constexpr key_t     empty_key = EmptyKey;
     static constexpr value_t   tomb_key  = TombstoneKey;
-    static constexpr value_t   init_val  = InitValue;
 
     class data_t
     {
