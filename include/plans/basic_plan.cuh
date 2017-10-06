@@ -81,36 +81,36 @@ public:
             const auto group = cg::tiled_partition<GroupSize>(block);
 
             //grid stride loop
-            for (auto data_index = get_group_id();
-                      (data_index < len_data);
-                      data_index += gridDim.x * blockDim.y)
+            for (index_t data_index = get_group_id();
+                         (data_index < len_data);
+                         data_index += gridDim.x * blockDim.y)
             {
 
                 auto state = state_t::neutral;
-                const auto data_elem = data[data_index];
+                const data_t data_elem = data[data_index];
 
                 //outer probing scheme (random hashing)
-                for (auto lvl1 = 0;
-                          group.all(state == state_t::neutral)
-                          && (lvl1 < config.lvl1_max);
-                          ++lvl1)
+                for (index_t lvl1 = 0;
+                             group.all(state == state_t::neutral)
+                             && (lvl1 < config.lvl1_max);
+                             ++lvl1)
                 {
 
-                    auto table_index = data_p::hash(data_elem.get_key(),
-                                                    lvl1);
+                    index_t table_index = data_p::hash(data_elem.get_key(),
+                                                       lvl1);
 
                     //inner probing scheme (linear probing with group)
-                    for (auto lvl2 = 0;
-                              group.all(state == state_t::neutral)
-                              && (lvl2 < config.lvl2_max);
-                              ++lvl2)
+                    for (index_t lvl2 = 0;
+                                 group.all(state == state_t::neutral)
+                                 && (lvl2 < config.lvl2_max);
+                                 ++lvl2)
                     {
-                        const auto lvl2_offset = lvl2 * group.size()
-                                               + group.thread_rank();
+                        const index_t lvl2_offset = lvl2 * group.size()
+                                                  + group.thread_rank();
 
                         table_index = (table_index + lvl2_offset) % capacity;
 
-                        auto table_elem = hash_table[table_index];
+                        data_t table_elem = hash_table[table_index];
 
                         //update+retrieve
                         if (table_elem.get_key() == data_elem.get_key())
