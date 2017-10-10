@@ -38,6 +38,26 @@
                       << std::endl;
 #endif
 
+#ifdef __CUDACC__
+    #define BANDWIDTHSTART(label)                                              \
+        cudaSetDevice(0);                                                      \
+        cudaEvent_t start##label, stop##label;                                 \
+        float time##label;                                                     \
+        cudaEventCreate(&start##label);                                        \
+        cudaEventCreate(&stop##label);                                         \
+        cudaEventRecord(start##label, 0);
+
+    #define BANDWIDTHSTOP(label, bytes)                                        \
+        cudaSetDevice(0);                                                      \
+        cudaEventRecord(stop##label, 0);                                       \
+        cudaEventSynchronize(stop##label);                                     \
+        cudaEventElapsedTime(&time##label, start##label, stop##label);         \
+        double bandwidth##label = (bytes)*1000UL/time##label/(1UL<<30);        \
+        std::cout << "TIMING: " << time##label << " ms "                       \
+                << "-> " << bandwidth##label << " GB/s bandwidth ("    \
+                << #label << ")" << std::endl;
+#endif
+
 
 #ifdef __CUDACC__
     #define CUERR {                                                            \
