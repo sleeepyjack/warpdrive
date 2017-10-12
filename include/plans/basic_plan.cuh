@@ -1,10 +1,10 @@
 #pragma once
 
 template<
-    class DataPolicy = warpdrive::policies::PackedPairDataPolicy<>,
     uint8_t GroupSize = 16,
-    class Index = uint64_t,
-    class FailurePolicy = warpdrive::policies::PrintIdFailurePolicy>
+    class DataPolicy = warpdrive::policies::PackedPairDataPolicy<>,
+    class FailurePolicy = warpdrive::policies::PrintIdFailurePolicy,
+    class Index = uint64_t>
 class BasicPlan
 {
 
@@ -17,7 +17,7 @@ class BasicPlan
     using failure_t = typename FailurePolicy::data_t;
 
     static constexpr index_t group_size = GroupSize;
-    static constexpr key_t   empty_key    = DataPolicy::empty_key;
+    static constexpr key_t   empty_key  = DataPolicy::empty_key;
     static constexpr key_t   tomb_key   = DataPolicy::tomb_key;
 
 public:
@@ -33,7 +33,7 @@ public:
 
         config_t(index_t lvl1_max          = 100000,
                  index_t lvl2_max          = 1,
-                 index_t blocks_per_grid   = std::numeric_limits<uint32_t>::max(),
+                 index_t blocks_per_grid   = (1UL << 31)-1,
                  index_t threads_per_block = 256)
                  :
                  //outer probing scheme (random hashing)
@@ -143,7 +143,7 @@ public:
                             {
                                 if(group.thread_rank() == leader_rank())
                                 {
-                                    printf("u %u\n", data_elem.get_key());
+
                                     //update
                                     elem_op::op(hash_table + table_index,
                                                 data_elem);
@@ -155,7 +155,6 @@ public:
                                     }
 
                                     thread_state = state_t::success;
-                                    //printf("retrieve success %d at %d\n", data_index, table_index);
                                 }
                             }
 
@@ -181,14 +180,13 @@ public:
                                                                       table_elem,
                                                                       data_elem))
                                         {
-                                            printf("i %u\n", data_elem.get_key());
+
                                             //update
                                             elem_op::op(hash_table + table_index,
                                                         data_elem);
 
                                             //success (insert+update)
                                             thread_state = state_t::success;
-                                            //printf("insert success %d at %d\n", data_index, table_index);
                                         }
                                     }
                                 }
@@ -209,78 +207,10 @@ public:
                                 group_is_active = false;
                                 break;
                             }
-                            
+
                             //reload window
                             table_elem = hash_table[table_index];
                         }
-
-                        /*
-                        //update+retrieve
-                        if (table_elem.get_key() == data_elem.get_key())
-                        {
-                            auto active = group.ballot(true);
-
-                            //the leader
-                            if (group.thread_rank() == __ffs(active)-1)
-                            {
-                                //update
-                                elem_op::op(hash_table + table_index,
-                                            data_elem);
-
-                                //retrieve
-                                if (table_op == table_op_t::retrieve)
-                                {
-                                    data[data_index] = table_elem;
-                                }
-
-                                //success (update or update+retrieve)
-                                state = state_t::success;
-                                //printf("retrieve success %d at %d\n", data_index, table_index);
-
-                            }
-                        }
-
-                        //insert+update or failure
-                        while (!group.any((state == state_t::success) || (state == state_t::failure))
-                               && (table_elem.get_key() == nil_key
-                               ||  table_elem.get_key() == tomb_key))
-                        {
-
-                            auto active = group.ballot(true);
-
-                            //the leader
-                            if (group.thread_rank() == __ffs(active)-1)
-                            {
-
-                                if (table_op == table_op_t::insert)
-                                {
-                                    //insert
-                                    if (data_p::try_lockfree_swap(hash_table
-                                                                  + table_index,
-                                                                  table_elem,
-                                                                  data_elem))
-                                    {
-                                        //update
-                                        elem_op::op(hash_table + table_index,
-                                                    data_elem);
-
-                                        //success (insert+update)
-                                        state = state_t::success;
-                                        //printf("insert success %d at %d\n", data_index, table_index);
-                                    }
-                                }
-                                else
-                                {
-                                    //failure (key not found)
-                                    state = state_t::failure;
-                                }
-
-                                //reload candidate slots
-                                table_elem = hash_table[table_index];
-
-                            }
-                        }
-                        */
                     }
                 }
 

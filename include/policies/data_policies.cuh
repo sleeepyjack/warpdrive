@@ -207,8 +207,6 @@ public:
                 _new_value = _new.get_value();
                 _new.set_value_safe(++_new_value);
             } while(!try_lockfree_swap(address, _old, _new));
-            printf("count old=%u %u new=%u %u\n", _old.get_key(), _old.get_value(),
-                                                  _new.get_key(), _new.get_value());
         }
     };
 

@@ -21,7 +21,7 @@ int main(int argc, char const *argv[]) {
     //the size of the thread groups (must be available at compile time)
     static constexpr index_t group_size = 4;
     //output verbosity (must be available at compile time)
-    static constexpr index_t verbosity = 0;
+    static constexpr index_t verbosity = 2;
     //filename for test data (dumped with binary_io.h)
     const string  filename = argv[1];
     //length of test data
@@ -35,7 +35,7 @@ int main(int argc, char const *argv[]) {
     //max linear probing attempts
     const index_t lvl2_max = atoi(argv[5]);
     //number of CUDA blocks per grid
-    const index_t blocks_per_grid = (atoi(argv[6]) != 0) ? atoi(argv[6]): std::numeric_limits<index_t>::max();
+    const index_t blocks_per_grid = (atoi(argv[6]) != 0) ? atoi(argv[6]): (1UL << 31)-1;
     //number of threads per CUDA block (must be multiple of group_size)
     const index_t threads_per_block = atoi(argv[7]);
     //id of selected CUDA device
@@ -73,10 +73,10 @@ int main(int argc, char const *argv[]) {
    using value_t = data_p::value_t;
 
     //plan (the meat)
-    using plan_t = plans::BasicPlan<data_p,
-                                    group_size, //size of parallel probing group
-                                    index_t,    //index type to use
-                                    failure_p>;
+    using plan_t = plans::BasicPlan<group_size, //size of parallel probing group
+                                    data_p,
+                                    failure_p,
+                                    index_t>; //index type to use>
 
     //config struct (probing lengths and kernel launch config)
     plan_t::config_t config(lvl1_max,
@@ -109,7 +109,7 @@ int main(int argc, char const *argv[]) {
     failure_handler.init();
 
     //the first task to execute
-    using elem_op_1 = data_p::count_op;
+    using elem_op_1 = data_p::update_op;
     static constexpr auto table_op_1 = plan_t::table_op_t::insert;
 
     //the second task to execute
@@ -125,9 +125,9 @@ int main(int argc, char const *argv[]) {
     #pragma omp parallel for
     for (index_t i = 0; i < len_data; i++)
     {
-        data_h[i] = data_t(keys_h[i], 0);
+        data_h[i] = data_t(keys_h[i], i+1);
     }
-    memcpy(data_h+(len_data/2), data_h, sizeof(data_t)*len_data/2);
+
     cudaMemcpy(data_d, data_h, sizeof(data_t)*len_data, H2D); CUERR
 
     //execute task
@@ -159,7 +159,6 @@ int main(int argc, char const *argv[]) {
     index_t num_errors = 0;
     //#pragma omp parallel for reduction(+:num_errors)
     for (index_t i = 0; i < len_data; i++) {
-        cout << data_h[i].get_key() << "\t" << data_h[i].get_value() << endl;
         if (data_h[i].get_value() != i+1)
         {
             num_errors += 1;
