@@ -127,8 +127,6 @@ public:
                                  ++lvl2)
                     {
 
-                        printf("%llu %u %u\n", data_index, group.thread_rank(), threadIdx.x);
-
                         index_t lvl2_offset = lvl2 * group.size()
                                             + group.thread_rank();
 
