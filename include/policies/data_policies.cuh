@@ -210,7 +210,7 @@ public:
         }
     };
 
-    template<value_t Max = std::numeric_limits<value_t>::max()>
+    template<value_t Max>
     class count_clamped_op
     {
     public:

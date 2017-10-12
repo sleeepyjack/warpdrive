@@ -1,14 +1,12 @@
 #pragma once
 
 template<
+    uint8_t GroupSize = 16,
     class DataPolicy = warpdrive::policies::PackedPairDataPolicy<>,
-    class Index = uint64_t,
-    Index GroupSize = 16,
-    class FailurePolicy = warpdrive::policies::PrintIdFailurePolicy>
+    class FailurePolicy = warpdrive::policies::PrintIdFailurePolicy,
+    class Index = uint64_t>
 class BasicPlan
 {
-
-public:
 
     using index_t   = Index;
     using data_p    = DataPolicy;
@@ -19,8 +17,10 @@ public:
     using failure_t = typename FailurePolicy::data_t;
 
     static constexpr index_t group_size = GroupSize;
-    static constexpr key_t   nil_key    = DataPolicy::empty_key;
+    static constexpr key_t   empty_key  = DataPolicy::empty_key;
     static constexpr key_t   tomb_key   = DataPolicy::tomb_key;
+
+public:
 
     enum class table_op_t
     {
@@ -33,7 +33,7 @@ public:
 
         config_t(index_t lvl1_max          = 100000,
                  index_t lvl2_max          = 1,
-                 index_t blocks_per_grid   = std::numeric_limits<uint32_t>::max(),
+                 index_t blocks_per_grid   = (1UL << 31)-1,
                  index_t threads_per_block = 256)
                  :
                  //outer probing scheme (random hashing)
@@ -80,108 +80,142 @@ public:
             const auto block = cg::this_thread_block();
             const auto group = cg::tiled_partition<GroupSize>(block);
 
+            state_t thread_state;
+            bool group_is_active;
+            data_t table_elem, data_elem;
+
+            auto any_thread_state_changed = [&]
+            {
+                return !group.all(thread_state == state_t::neutral);
+            };
+
+            auto leader_rank = [&]
+            {
+                return __ffs(group.ballot(true))-1;
+            };
+
+            auto any_candidates = [&]
+            {
+                return group.any(table_elem.get_key() == data_elem.get_key()
+                              || table_elem.get_key() == empty_key
+                              || table_elem.get_key() == tomb_key);
+            };
+
             //grid stride loop
             for (index_t data_index = get_group_id();
-                         (data_index < len_data);
+                         data_index < len_data;
                          data_index += gridDim.x * blockDim.y)
             {
 
-                auto state = state_t::neutral;
-                const data_t data_elem = data[data_index];
+                thread_state = state_t::neutral;
+                group_is_active = true;
+                data_elem = data[data_index];
 
                 //outer probing scheme (random hashing)
                 for (index_t lvl1 = 0;
-                             group.all(state == state_t::neutral)
+                             group_is_active
                              && (lvl1 < config.lvl1_max);
                              ++lvl1)
                 {
 
-                    index_t table_index = data_p::hash(data_elem.get_key(),
-                                                       lvl1);
+                    index_t table_index = data_p::hash(data_elem.get_key(), lvl1);
 
                     //inner probing scheme (linear probing with group)
                     for (index_t lvl2 = 0;
-                                 group.all(state == state_t::neutral)
+                                 group_is_active
                                  && (lvl2 < config.lvl2_max);
                                  ++lvl2)
                     {
-                        const index_t lvl2_offset = lvl2 * group.size()
-                                                  + group.thread_rank();
+
+                        index_t lvl2_offset = lvl2 * group.size()
+                                            + group.thread_rank();
 
                         table_index = (table_index + lvl2_offset) % capacity;
 
-                        data_t table_elem = hash_table[table_index];
+                        table_elem = hash_table[table_index];
 
-                        //update+retrieve
-                        if (table_elem.get_key() == data_elem.get_key())
+                        //any candidate slots inside window?
+                        while (any_candidates())
                         {
-                            auto active = group.ballot(true);
 
-                            //the leader
-                            if (group.thread_rank() == __ffs(active)-1)
+                            //update+retrieve
+                            if (table_elem.get_key() == data_elem.get_key())
                             {
-                                //update
-                                elem_op::op(hash_table + table_index,
-                                            data_elem);
-
-                                //retrieve
-                                if (table_op == table_op_t::retrieve)
+                                if(group.thread_rank() == leader_rank())
                                 {
-                                    data[data_index] = table_elem;
+
+                                    //update
+                                    elem_op::op(hash_table + table_index,
+                                                data_elem);
+
+                                    //retrieve
+                                    if (table_op == table_op_t::retrieve)
+                                    {
+                                        data[data_index] = table_elem;
+                                    }
+
+                                    thread_state = state_t::success;
                                 }
-
-                                //success (update or update+retrieve)
-                                state = state_t::success;
-                                //printf("retrieve success %d at %d\n", data_index, table_index);
-
                             }
-                        }
 
-                        //insert+update or failure
-                        while (!group.any((state == state_t::success) || (state == state_t::failure))
-                               && (table_elem.get_key() == nil_key
-                               ||  table_elem.get_key() == tomb_key))
-                        {
-
-                            auto active = group.ballot(true);
-
-                            //the leader
-                            if (group.thread_rank() == __ffs(active)-1)
+                            //sync and check group state
+                            if (any_thread_state_changed())
                             {
+                                group_is_active = false;
+                                break;
+                            }
 
+                            //insert
+                            if (table_elem.get_key() == empty_key
+                             || table_elem.get_key() == tomb_key)
+                            {
                                 if (table_op == table_op_t::insert)
                                 {
-                                    //insert
-                                    if (data_p::try_lockfree_swap(hash_table
-                                                                  + table_index,
-                                                                  table_elem,
-                                                                  data_elem))
+                                    if(group.thread_rank() == leader_rank())
                                     {
-                                        //update
-                                        elem_op::op(hash_table + table_index,
-                                                    data_elem);
 
-                                        //success (insert+update)
-                                        state = state_t::success;
-                                        //printf("insert success %d at %d\n", data_index, table_index);
+                                        //insert
+                                        if (data_p::try_lockfree_swap(hash_table
+                                                                      + table_index,
+                                                                      table_elem,
+                                                                      data_elem))
+                                        {
+
+                                            //update
+                                            elem_op::op(hash_table + table_index,
+                                                        data_elem);
+
+                                            //success (insert+update)
+                                            thread_state = state_t::success;
+                                        }
                                     }
                                 }
                                 else
                                 {
-                                    //failure (key not found)
-                                    state = state_t::failure;
+                                    if (table_elem.get_key() == empty_key)
+                                    {
+                                        //failure (key not found)
+                                        thread_state = state_t::failure;
+                                    }
+
                                 }
-
-                                //reload candidate slots
-                                table_elem = hash_table[table_index];
-
                             }
+
+                            //sync and check group state
+                            if (any_thread_state_changed())
+                            {
+                                group_is_active = false;
+                                break;
+                            }
+
+                            //reload window
+                            table_elem = hash_table[table_index];
                         }
                     }
                 }
 
                 //if no success
-                if (!group.any(state == state_t::success))
+                if (!group.any(thread_state == state_t::success))
                 {
                     //printf("%d %d\n", data_index, state);
                     if (group.thread_rank() == 0) {
