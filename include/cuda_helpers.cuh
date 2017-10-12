@@ -173,7 +173,7 @@ namespace cooperative_groups
         DEVICEQUALIFIER
         tiled_partition(int ignore)
         {
-
+            
         }
 
         DEVICEQUALIFIER INLINEQUALIFIER
@@ -203,7 +203,7 @@ namespace cooperative_groups
         DEVICEQUALIFIER INLINEQUALIFIER
         bool all(bool pred) const
         {
-            return (ballot(pred) == mask);
+            return (__popc(ballot(pred)) == Size);
         }
     };
 
