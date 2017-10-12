@@ -77,6 +77,8 @@ public:
         <<<grid_dim, block_dim, 0, stream>>>
         ([=] DEVICEQUALIFIER {
 
+            namespace cg = cooperative_groups;
+
             const auto block = cg::this_thread_block();
             const auto group = cg::tiled_partition<GroupSize>(block);
 
@@ -113,8 +115,7 @@ public:
 
                 //outer probing scheme (random hashing)
                 for (index_t lvl1 = 0;
-                             group_is_active
-                             && (lvl1 < config.lvl1_max);
+                             group_is_active && (lvl1 < config.lvl1_max);
                              ++lvl1)
                 {
 
@@ -122,10 +123,11 @@ public:
 
                     //inner probing scheme (linear probing with group)
                     for (index_t lvl2 = 0;
-                                 group_is_active
-                                 && (lvl2 < config.lvl2_max);
+                                 group_is_active && (lvl2 < config.lvl2_max);
                                  ++lvl2)
                     {
+
+                        printf("%llu %u %u\n", data_index, group.thread_rank(), threadIdx.x);
 
                         index_t lvl2_offset = lvl2 * group.size()
                                             + group.thread_rank();
@@ -141,6 +143,7 @@ public:
                             //update+retrieve
                             if (table_elem.get_key() == data_elem.get_key())
                             {
+
                                 if(group.thread_rank() == leader_rank())
                                 {
 
