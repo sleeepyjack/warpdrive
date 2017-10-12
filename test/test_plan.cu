@@ -19,7 +19,7 @@ int main(int argc, char const *argv[]) {
 
     //PARAMS
     //the size of the thread groups (must be available at compile time)
-    static constexpr index_t group_size = 16;
+    static constexpr index_t group_size = 4;
     //output verbosity (must be available at compile time)
     static constexpr index_t verbosity = 0;
     //filename for test data (dumped with binary_io.h)
@@ -68,14 +68,14 @@ int main(int argc, char const *argv[]) {
                                        warpdrive::policies::IgnoreFailurePolicy>::type;
 
    //data types
-   using data_t    = data_p::data_t;
-   using key_t     = data_p::key_t;
-   using value_t   = data_p::value_t;
+   using data_t  = data_p::data_t;
+   using key_t   = data_p::key_t;
+   using value_t = data_p::value_t;
 
     //plan (the meat)
     using plan_t = plans::BasicPlan<data_p,
-                                    index_t,    //index type to use
                                     group_size, //size of parallel probing group
+                                    index_t,    //index type to use
                                     failure_p>;
 
     //config struct (probing lengths and kernel launch config)
@@ -109,7 +109,7 @@ int main(int argc, char const *argv[]) {
     failure_handler.init();
 
     //the first task to execute
-    using elem_op_1 = data_p::nop_op;
+    using elem_op_1 = data_p::count_op;
     static constexpr auto table_op_1 = plan_t::table_op_t::insert;
 
     //the second task to execute
@@ -125,8 +125,9 @@ int main(int argc, char const *argv[]) {
     #pragma omp parallel for
     for (index_t i = 0; i < len_data; i++)
     {
-        data_h[i] = data_t(keys_h[i], i+1);
+        data_h[i] = data_t(keys_h[i], 0);
     }
+    memcpy(data_h+(len_data/2), data_h, sizeof(data_t)*len_data/2);
     cudaMemcpy(data_d, data_h, sizeof(data_t)*len_data, H2D); CUERR
 
     //execute task
@@ -142,6 +143,7 @@ int main(int argc, char const *argv[]) {
     {
         data_h[i].set_value(elem_op_2::identity);
     }
+
     cudaMemcpy(data_d, data_h, sizeof(data_t)*len_data, H2D); CUERR
 
     //retrieve results
@@ -155,8 +157,9 @@ int main(int argc, char const *argv[]) {
 
     //validation
     index_t num_errors = 0;
-    #pragma omp parallel for reduction(+:num_errors)
+    //#pragma omp parallel for reduction(+:num_errors)
     for (index_t i = 0; i < len_data; i++) {
+        cout << data_h[i].get_key() << "\t" << data_h[i].get_value() << endl;
         if (data_h[i].get_value() != i+1)
         {
             num_errors += 1;
