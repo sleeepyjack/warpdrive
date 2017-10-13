@@ -129,16 +129,6 @@ namespace pIvghor {
             uint64_t len_data_h) const
         {
 
-            /*
-            //init failure handler
-            failure_p failure_handler = failure_p();
-            failure_handler.init();
-
-            // plain insertion, no element operation
-            constexpr auto elem_op  = WarpdrivePlan::data_p::nop_op;
-            constexpr auto table_op = WarpdrivePlan::table_op_t::insert;
-            */
-
             // compute number of elements to be inserted in each round
             const uint64_t batch_stride = num_gpus*batch_size;
             const uint64_t num_batches = SDIV(len_data_h, batch_stride);
@@ -178,8 +168,13 @@ namespace pIvghor {
                     dsts[gpu] = yang[gpu];
                 }
 
+                using hasher_t =
+                    warpdrive::hashers::murmur_integer_finalizer_hash_uint32_t;
+
+                hasher_t hasher = hasher_t();
+
                 auto part_hash = [=] DEVICEQUALIFIER (const data_t& x){
-                    return (x.get_key() % num_gpus) + 1;
+                    return (hasher.hash(x.get_key()) % num_gpus) + 1;
                 };
 
                 uint64_t table[num_gpus][num_gpus];
