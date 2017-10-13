@@ -213,7 +213,8 @@ namespace pIvghor {
 
                 //insert or update entries
                 using elem_op = typename data_p::update_op;
-                static constexpr auto table_op = WarpdrivePlan::table_op_t::insert;
+                static constexpr auto table_op =
+                    WarpdrivePlan::table_op_t::insert;
 
                 //TIMERSTOP(all2all)
                 //TIMERSTART(insert)
@@ -231,8 +232,148 @@ namespace pIvghor {
 
                 context->sync_all_streams();
             }
-
-
         }
+
+        void retrieve_to_host(
+            data_t * data_h,     // this be better pinned memory!
+            uint64_t len_data_h) const
+        {
+            // compute number of elements to be retrieved in each round
+            const uint64_t batch_stride = num_gpus*batch_size;
+            const uint64_t num_batches = SDIV(len_data_h, batch_stride);
+            std::cout << "numbatches " << num_batches << std::endl;
+
+            uint64_t v_offsets[num_gpus] = {0};
+            for (uint64_t batch = 0; batch < num_batches; ++batch) {
+                //TIMERSTART(all2all)
+                // make sure all streams are ready for action
+                context->sync_all_streams();
+
+                // the lower and upper [exclusive] position
+                // to be retrieved to the host array data_h
+                const uint64_t lower = batch*batch_stride;
+                const uint64_t upper = std::min(lower+batch_stride, len_data_h);
+                const uint64_t width = upper-lower;
+
+                // this array partitions the width many elements into
+                // num_gpus many portions of approximately equal size
+                data_t * srcs[num_gpus] = {nullptr};
+                data_t * dsts[num_gpus] = {nullptr};
+                uint64_t lens[num_gpus] = {0};
+                const uint64_t sub_batch_stride = SDIV(width, num_gpus);
+                for (uint64_t gpu = 0; gpu < num_gpus; ++gpu) {
+                    const uint64_t sub_lower = gpu*sub_batch_stride;
+                    const uint64_t sub_upper = std::min(width,
+                                               sub_lower+sub_batch_stride);
+                    srcs[gpu] = data_h+lower+sub_lower;
+                    dsts[gpu] = ying[gpu];
+                    lens[gpu] = sub_upper-sub_lower;
+                }
+
+                // move batches to buffer ying
+                point2point->execH2DAsync(srcs, dsts, lens);
+                point2point->sync();
+
+                // perform multisplit on each device
+                for (uint64_t gpu = 0; gpu < num_gpus; ++gpu) {
+                    srcs[gpu] = ying[gpu];
+                    dsts[gpu] = yang[gpu];
+                }
+
+                using hasher_t =
+                    warpdrive::hashers::murmur_integer_finalizer_hash_uint32_t;
+
+                hasher_t hasher = hasher_t();
+
+                auto part_hash = [=] DEVICEQUALIFIER (const data_t& x){
+                    return (hasher.hash(x.get_key()) % num_gpus) + 1;
+                };
+
+                uint64_t table[num_gpus][num_gpus];
+                multisplit->execAsync(srcs, lens, dsts, lens, table, part_hash);
+                multisplit->sync();
+
+                // perform all to all communication
+                uint64_t srcs_lens[num_gpus];
+                uint64_t dsts_lens[num_gpus];
+                for (uint64_t gpu = 0; gpu < num_gpus; ++gpu) {
+                    srcs_lens[gpu] = batch_size;
+                    dsts_lens[gpu] = secure_batch_size;
+                    srcs[gpu] = yang[gpu];
+                    dsts[gpu] = ying[gpu];
+                }
+
+                all2all->execAsync(srcs, srcs_lens, dsts, dsts_lens, table);
+                all2all->sync();
+
+                // compute the lens of to be hashed keys
+                uint64_t v_table[num_gpus+1][num_gpus] = {0};
+                for (uint64_t gpu = 0; gpu < num_gpus; ++gpu)
+                    for (uint64_t part = 0; part < num_gpus; ++part)
+                         v_table[gpu+1][part] =   table[gpu][part]
+                                              + v_table[gpu][part];
+
+              for (uint64_t gpu = 0; gpu < num_gpus; ++gpu)
+                  for (uint64_t part = 0; part < num_gpus; ++part)
+                    std::cout << table[gpu][part] << (part+1 == num_gpus ? "\n": " ");
+
+                for (uint64_t gpu = 0; gpu < num_gpus; ++gpu)
+                    lens[gpu] = v_table[num_gpus][gpu];
+
+
+
+
+                std::cout << std::endl;
+
+                //TODO: check if really necessary
+                context->sync_all_streams();
+                //TIMERSTOP(all2all)
+
+                //init failure handler
+                failure_p failure_handler = failure_p();
+                failure_handler.init();
+
+                //retrieve op
+                using elem_op = typename data_p::nop_op;
+                static constexpr auto table_op =
+                    WarpdrivePlan::table_op_t::retrieve;
+
+                //TIMERSTART(retrieve)
+                for (uint64_t gpu = 0; gpu < num_gpus; ++gpu) {
+                    cudaSetDevice(context->get_device_id(gpu));
+
+                    //execute task
+                    WarpdrivePlan::template table_operation<table_op,
+                                                            elem_op>
+                    (dsts[gpu], lens[gpu], hash_table[gpu], capacity_per_gpu,
+                     failure_handler, context->get_streams(gpu)[0]);
+
+                } CUERR
+                //TIMERSTOP(retrieve)
+
+                context->sync_all_streams();
+
+                uint64_t h_lens[num_gpus] = {0};
+                for (uint64_t gpu = 1; gpu < num_gpus; ++gpu)
+                    h_lens[gpu] = h_lens[gpu-1] + lens[gpu];
+
+                for (uint64_t gpu = 0; gpu < num_gpus; ++gpu) {
+
+                    srcs[gpu] = dsts[gpu];
+                    std::cout << "offsets " << batch*num_gpus*batch_size+h_lens[gpu] << std::endl;
+                    dsts[gpu] = data_h+v_offsets[gpu]+h_lens[gpu];
+                    std::cout << h_lens[gpu] << std::endl;
+                }
+
+                point2point->execD2HAsync(srcs, dsts, lens);
+                point2point->sync();
+
+                for (uint64_t gpu = 0; gpu < num_gpus; ++gpu) {
+                    v_offsets[gpu] += lens[gpu];
+                }
+
+            }
+        }
+
     };
 }
