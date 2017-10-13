@@ -1,12 +1,8 @@
 #pragma once
 
-#include <cstdint>
-#include <stdexcept>
-#include "../cuda_helpers.cuh"
-
 template <
-    uint8_t num_gpus,
-    bool throw_exceptions=true,
+    uint64_t num_gpus,
+    uint64_t throw_exceptions=true,
     uint64_t PEER_STATUS_SLOW=0,
     uint64_t PEER_STATUS_DIAG=1,
     uint64_t PEER_STATUS_FAST=2>

@@ -1,6 +1,8 @@
 # pragma once
 
 #include <cstdint>
+#include <random>
+#include <cstring>
 #include <stdexcept>
 #include "cuda_helpers.cuh"
 

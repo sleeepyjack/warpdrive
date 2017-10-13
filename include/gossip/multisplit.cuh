@@ -1,9 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <stdexcept>
-#include "../cuda_helpers.cuh"
-
 template <
     typename value_t,
     typename index_t,
@@ -32,9 +28,9 @@ void binary_split(
 }
 
 template <
-    uint8_t num_gpus,
-    typename cnter_t=uint32_t,
-    bool throw_exceptions=true>
+    uint64_t num_gpus,
+    uint64_t throw_exceptions=true,
+    typename cnter_t=uint32_t>
 class multisplit_t {
 
     const context_t<num_gpus> * context;

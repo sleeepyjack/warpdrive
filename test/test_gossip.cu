@@ -1,10 +1,6 @@
 #include <iostream>
-#include <cstring>
-#include <random>
 #include "../include/gossip.cuh"
 #include "../include/cuda_helpers.cuh"
-
-
 
 template <
     uint8_t num_gpus=4,

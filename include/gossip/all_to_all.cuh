@@ -1,12 +1,8 @@
 #pragma once
 
-#include <cstdint>
-#include <stdexcept>
-#include "../cuda_helpers.cuh"
-
 template<
-    uint8_t num_gpus,
-    uint8_t throw_exceptions=true>
+    uint64_t num_gpus,
+    uint64_t throw_exceptions=true>
 class all2all_t {
 
     context_t<num_gpus> * context;

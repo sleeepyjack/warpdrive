@@ -16,7 +16,7 @@ namespace warpdrive
 
         #include "hashers.cuh"
 
-    }; //namespace hashers
+    } //namespace hashers
 
     namespace policies
     {
@@ -31,6 +31,6 @@ namespace warpdrive
 
         #include "plans/basic_plan.cuh"
 
-    }; //namespace plans
+    } //namespace plans
 
-}; //namespace warpdrive
+} //namespace warpdrive

@@ -1,12 +1,8 @@
 #pragma once
 
-#include <cstdint>
-#include <stdexcept>
-#include "../cuda_helpers.cuh"
-
 template <
-    uint8_t num_gpus,
-    bool throw_exceptions=true>
+    uint64_t num_gpus,
+    uint64_t throw_exceptions=true>
 class point2point_t {
 
     const context_t<num_gpus> * context;
