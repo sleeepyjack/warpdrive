@@ -206,14 +206,13 @@ namespace pIvghor {
 
                 //TODO: check if really necessary
                 context->sync_all_streams();
-                // dsts[gpu], lens[gpu], context->get_streams(gpu)[0]
 
                 //init failure handler
                 failure_p failure_handler = failure_p();
                 failure_handler.init();
 
-                //the first task to execute
-                using elem_op = typename data_p::nop_op;
+                //insert or update entries
+                using elem_op = typename data_p::update_op;
                 static constexpr auto table_op = WarpdrivePlan::table_op_t::insert;
 
                 //TIMERSTOP(all2all)
