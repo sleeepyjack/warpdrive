@@ -6,8 +6,6 @@
 
 #include "cuda_helpers.cuh"
 
-namespace cg = cooperative_groups; //FIXME namespace pollution
-
 namespace warpdrive
 {
 
