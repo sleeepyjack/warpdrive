@@ -16,10 +16,10 @@ namespace pIvghor {
         uint64_t batch_size=1UL<<20,
         class WarpdriveDataPolicy=warpdrive::policies::PackedPairDataPolicy<>,
         class WarpdriveFailurePolicy=warpdrive::policies::IgnoreFailurePolicy,
-        class WarpdrivePlan=warpdrive::plans::BasicPlan<WarpdriveDataPolicy,
-                                                        uint64_t,
-                                                        16,
-                                                        WarpdriveFailurePolicy>,
+        class WarpdrivePlan=warpdrive::plans::BasicPlan<16,
+                                                        WarpdriveDataPolicy,
+                                                        WarpdriveFailurePolicy,
+                                                        uint64_t>,
         uint64_t throw_exceptions=true>
     class pIvghor {
     public:
