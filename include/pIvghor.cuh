@@ -241,9 +241,6 @@ namespace pIvghor {
             // compute number of elements to be retrieved in each round
             const uint64_t batch_stride = num_gpus*batch_size;
             const uint64_t num_batches = SDIV(len_data_h, batch_stride);
-            std::cout << "numbatches " << num_batches << std::endl;
-
-            uint64_t v_offsets[num_gpus] = {0};
             for (uint64_t batch = 0; batch < num_batches; ++batch) {
                 //TIMERSTART(all2all)
                 // make sure all streams are ready for action
@@ -313,17 +310,8 @@ namespace pIvghor {
                          v_table[gpu+1][part] =   table[gpu][part]
                                               + v_table[gpu][part];
 
-              for (uint64_t gpu = 0; gpu < num_gpus; ++gpu)
-                  for (uint64_t part = 0; part < num_gpus; ++part)
-                    std::cout << table[gpu][part] << (part+1 == num_gpus ? "\n": " ");
-
                 for (uint64_t gpu = 0; gpu < num_gpus; ++gpu)
                     lens[gpu] = v_table[num_gpus][gpu];
-
-
-
-
-                std::cout << std::endl;
 
                 //TODO: check if really necessary
                 context->sync_all_streams();
@@ -355,23 +343,15 @@ namespace pIvghor {
 
                 uint64_t h_lens[num_gpus] = {0};
                 for (uint64_t gpu = 1; gpu < num_gpus; ++gpu)
-                    h_lens[gpu] = h_lens[gpu-1] + lens[gpu];
+                    h_lens[gpu] = h_lens[gpu-1] + lens[gpu-1];
 
                 for (uint64_t gpu = 0; gpu < num_gpus; ++gpu) {
-
                     srcs[gpu] = dsts[gpu];
-                    std::cout << "offsets " << batch*num_gpus*batch_size+h_lens[gpu] << std::endl;
-                    dsts[gpu] = data_h+v_offsets[gpu]+h_lens[gpu];
-                    std::cout << h_lens[gpu] << std::endl;
+                    dsts[gpu] = data_h+batch*batch_stride+h_lens[gpu];
                 }
 
                 point2point->execD2HAsync(srcs, dsts, lens);
                 point2point->sync();
-
-                for (uint64_t gpu = 0; gpu < num_gpus; ++gpu) {
-                    v_offsets[gpu] += lens[gpu];
-                }
-
             }
         }
 
