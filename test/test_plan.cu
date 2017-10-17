@@ -157,7 +157,7 @@ int main(int argc, char const *argv[]) {
 
     //validation
     index_t num_errors = 0;
-    //#pragma omp parallel for reduction(+:num_errors)
+    #pragma omp parallel for reduction(+:num_errors)
     for (index_t i = 0; i < len_data; i++) {
         if (data_h[i].get_value() != i+1)
         {
