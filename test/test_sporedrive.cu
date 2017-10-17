@@ -5,7 +5,8 @@
 
 int main(int argc, char const *argv[]) {
 
-    constexpr uint64_t num_gpus=4, num_async=4, batch_size=1UL<<24, capacity = 1UL << 32;
+    constexpr uint64_t num_gpus=4, num_async=1,
+                       batch_size=1UL<<26, capacity=1UL<<32;
 
     typedef sporedrive::sporedrive<num_gpus, num_async, batch_size> hashmap_t;
     typedef hashmap_t::data_t data_t;

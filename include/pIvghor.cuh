@@ -217,7 +217,7 @@ namespace pIvghor {
                     WarpdrivePlan::table_op_t::insert;
 
                 //TIMERSTOP(all2all)
-                //TIMERSTART(insert)
+                TIMERSTART(insert)
                 for (uint64_t gpu = 0; gpu < num_gpus; ++gpu) {
                     cudaSetDevice(context->get_device_id(gpu));
 
@@ -228,9 +228,10 @@ namespace pIvghor {
                      failure_handler, context->get_streams(gpu)[0]);
 
                 } CUERR
-                //TIMERSTOP(insert)
+
 
                 context->sync_all_streams();
+                TIMERSTOP(insert)
             }
         }
 

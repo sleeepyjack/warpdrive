@@ -19,7 +19,7 @@ int main(int argc, char const *argv[]) {
 
     //PARAMS
     //the size of the thread groups (must be available at compile time)
-    static constexpr index_t group_size = 4;
+    static constexpr index_t group_size = 16;
     //output verbosity (must be available at compile time)
     static constexpr index_t verbosity = 2;
     //filename for test data (dumped with binary_io.h)
@@ -29,7 +29,7 @@ int main(int argc, char const *argv[]) {
     //load factor of the hash table
     const float   load     = atof(argv[3]);
     //capacity of the hash table
-    const index_t capacity = len_data/load;
+    const index_t capacity = 1<<30;
     //max chaotic probing attempts
     const index_t lvl1_max = atoi(argv[4]);
     //max linear probing attempts
@@ -125,7 +125,7 @@ int main(int argc, char const *argv[]) {
     #pragma omp parallel for
     for (index_t i = 0; i < len_data; i++)
     {
-        data_h[i] = data_t(keys_h[i], i+1);
+        data_h[i] = data_t(i, i);
     }
 
     cudaMemcpy(data_d, data_h, sizeof(data_t)*len_data, H2D); CUERR
@@ -155,6 +155,7 @@ int main(int argc, char const *argv[]) {
 
     cudaMemcpy(data_h, data_d, sizeof(data_t)*len_data, D2H); CUERR
 
+    /*
     //validation
     index_t num_errors = 0;
     #pragma omp parallel for reduction(+:num_errors)
@@ -166,7 +167,7 @@ int main(int argc, char const *argv[]) {
     }
 
     cout << "ERRORS: " << num_errors << endl;
-
+    */
     //free memory
     delete[] keys_h;
     delete[] data_h;

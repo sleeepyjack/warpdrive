@@ -26,7 +26,7 @@ int main(int argc, char const *argv[]) {
     TIMERSTART(insert)
     hashmap.insert_from_host(data_h, len_data_h);
     TIMERSTOP(insert)
-
+    
     //reset data
     #pragma omp parallel for
     for (uint64_t i = 0; i < len_data_h; i++) {
