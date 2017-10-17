@@ -31,23 +31,18 @@ public:
     {
     public:
 
-        config_t(index_t lvl1_max          = 100000,
-                 index_t lvl2_max          = 1,
+        config_t(index_t max_probes        = 100000,
                  index_t blocks_per_grid   = (1UL << 31)-1,
                  index_t threads_per_block = 256)
                  :
-                 //outer probing scheme (random hashing)
-                 lvl1_max(lvl1_max),
-                 //inner probing scheme (linear probing with group width)
-                 lvl2_max(lvl2_max),
+                 max_probes(max_probes),
                  blocks_per_grid(blocks_per_grid),
                  threads_per_block(threads_per_block)
         {
 
         }
 
-        index_t lvl1_max;
-        index_t lvl2_max;
+        index_t max_probes;
         index_t blocks_per_grid;
         index_t threads_per_block;
     };
@@ -113,105 +108,93 @@ public:
                 group_is_active = true;
                 data_elem = data[data_index];
 
-                //outer probing scheme (random hashing)
-                for (index_t lvl1 = 0;
-                             group_is_active && (lvl1 < config.lvl1_max);
-                             ++lvl1)
+                //probing scheme (double hashing)
+                for (index_t probe = 0;
+                             group_is_active && (probe < config.max_probes);
+                             ++probe)
                 {
 
-                    index_t table_index = data_p::hash(data_elem.get_key(), lvl1);
+                    index_t table_index = (data_p::hash(data_elem.get_key(), probe) + group.thread_rank())%capacity;
 
-                    //inner probing scheme (linear probing with group)
-                    for (index_t lvl2 = 0;
-                                 group_is_active && (lvl2 < config.lvl2_max);
-                                 ++lvl2)
+                    table_elem = hash_table[table_index];
+
+                    //any candidate slots inside window?
+                    while (any_candidates())
                     {
 
-                        index_t lvl2_offset = lvl2 * group.size()
-                                            + group.thread_rank();
-
-                        table_index = (table_index + lvl2_offset) % capacity;
-
-                        table_elem = hash_table[table_index];
-
-                        //any candidate slots inside window?
-                        while (any_candidates())
+                        //update+retrieve
+                        if (table_elem.get_key() == data_elem.get_key())
                         {
 
-                            //update+retrieve
-                            if (table_elem.get_key() == data_elem.get_key())
+                            if(group.thread_rank() == leader_rank())
                             {
 
+                                //update
+                                elem_op::op(hash_table + table_index,
+                                            data_elem);
+
+                                //retrieve
+                                if (table_op == table_op_t::retrieve)
+                                {
+                                    data[data_index] = table_elem;
+                                }
+
+                                thread_state = state_t::success;
+                            }
+                        }
+
+                        //sync and check group state
+                        if (any_thread_state_changed())
+                        {
+                            group_is_active = false;
+                            break;
+                        }
+
+                        //insert
+                        if (table_elem.get_key() == empty_key
+                         || table_elem.get_key() == tomb_key)
+                        {
+                            if (table_op == table_op_t::insert)
+                            {
                                 if(group.thread_rank() == leader_rank())
                                 {
 
-                                    //update
-                                    elem_op::op(hash_table + table_index,
-                                                data_elem);
-
-                                    //retrieve
-                                    if (table_op == table_op_t::retrieve)
+                                    //insert
+                                    if (data_p::try_lockfree_swap(hash_table
+                                                                  + table_index,
+                                                                  table_elem,
+                                                                  data_elem))
                                     {
-                                        data[data_index] = table_elem;
-                                    }
 
-                                    thread_state = state_t::success;
+                                        //update
+                                        elem_op::op(hash_table + table_index,
+                                                    data_elem);
+
+                                        //success (insert+update)
+                                        thread_state = state_t::success;
+                                    }
                                 }
                             }
-
-                            //sync and check group state
-                            if (any_thread_state_changed())
+                            else
                             {
-                                group_is_active = false;
-                                break;
-                            }
-
-                            //insert
-                            if (table_elem.get_key() == empty_key
-                             || table_elem.get_key() == tomb_key)
-                            {
-                                if (table_op == table_op_t::insert)
+                                if (table_elem.get_key() == empty_key)
                                 {
-                                    if(group.thread_rank() == leader_rank())
-                                    {
-
-                                        //insert
-                                        if (data_p::try_lockfree_swap(hash_table
-                                                                      + table_index,
-                                                                      table_elem,
-                                                                      data_elem))
-                                        {
-
-                                            //update
-                                            elem_op::op(hash_table + table_index,
-                                                        data_elem);
-
-                                            //success (insert+update)
-                                            thread_state = state_t::success;
-                                        }
-                                    }
+                                    //failure (key not found)
+                                    thread_state = state_t::failure;
                                 }
-                                else
-                                {
-                                    if (table_elem.get_key() == empty_key)
-                                    {
-                                        //failure (key not found)
-                                        thread_state = state_t::failure;
-                                    }
 
-                                }
                             }
-
-                            //sync and check group state
-                            if (any_thread_state_changed())
-                            {
-                                group_is_active = false;
-                                break;
-                            }
-
-                            //reload window
-                            table_elem = hash_table[table_index];
                         }
+
+                        //sync and check group state
+                        if (any_thread_state_changed())
+                        {
+                            group_is_active = false;
+                            break;
+                        }
+
+                        //reload window
+                        table_elem = hash_table[table_index];
                     }
                 }
 
