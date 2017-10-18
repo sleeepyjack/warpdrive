@@ -1,4 +1,4 @@
-NVCC  = /project/pararch/cuda/cuda-9.0/bin/nvcc
+NVCC  = nvcc
 ARCH  = sm_60
 STD   = c++11
 FLAGS = -O3 -g -lineinfo -std=$(STD) -arch=$(ARCH) --expt-extended-lambda -Xcompiler="-Wall -fopenmp"

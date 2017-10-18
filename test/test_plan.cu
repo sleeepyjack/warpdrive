@@ -19,7 +19,7 @@ int main(int argc, char const *argv[]) {
 
     //PARAMS
     //the size of the thread groups (must be available at compile time)
-    static constexpr index_t group_size = 4;
+    static constexpr index_t group_size = 16;
     //output verbosity (must be available at compile time)
     static constexpr index_t verbosity = 2;
     //filename for test data (dumped with binary_io.h)
