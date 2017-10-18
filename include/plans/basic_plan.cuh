@@ -119,7 +119,7 @@ public:
                              ++lvl1)
                 {
 
-                    index_t table_index = data_p::hash(data_elem.get_key(), lvl1);
+                    index_t hash = data_p::hash(data_elem.get_key(), lvl1);
 
                     //inner probing scheme (linear probing with group)
                     for (index_t lvl2 = 0;
@@ -130,7 +130,7 @@ public:
                         index_t lvl2_offset = lvl2 * group.size()
                                             + group.thread_rank();
 
-                        table_index = (table_index + lvl2_offset) % capacity;
+                        index_t table_index = (hash + lvl2_offset) % capacity;
 
                         table_elem = hash_table[table_index];
 
