@@ -25,21 +25,21 @@ int main(int argc, char const *argv[]) {
     //filename for test data (dumped with binary_io.h)
     const string  filename = argv[1];
     //length of test data
-    const index_t len_data = atoi(argv[2]);
-    //load factor of the hash table
-    const float   load     = atof(argv[3]);
+    const index_t len_data = stol(argv[2]);
     //capacity of the hash table
-    const index_t capacity = len_data/load;
+    const index_t capacity = stol(argv[3]);
+    //load factor of the hash table
+    const float   load     = float(len_data)/float(capacity);
     //max chaotic probing attempts
-    const index_t lvl1_max = atoi(argv[4]);
+    const index_t lvl1_max = stol(argv[4]);
     //max linear probing attempts
-    const index_t lvl2_max = atoi(argv[5]);
+    const index_t lvl2_max = stol(argv[5]);
     //number of CUDA blocks per grid
-    const index_t blocks_per_grid = (atoi(argv[6]) != 0) ? atoi(argv[6]): (1UL << 31)-1;
+    const index_t blocks_per_grid = (stol(argv[6]) != 0) ? stol(argv[6]): (1UL << 31)-1;
     //number of threads per CUDA block (must be multiple of group_size)
-    const index_t threads_per_block = atoi(argv[7]);
+    const index_t threads_per_block = stol(argv[7]);
     //id of selected CUDA device
-    const index_t device_id = atoi(argv[8]);
+    const index_t device_id = stol(argv[8]);
 
     if (verbosity > 0)
     {

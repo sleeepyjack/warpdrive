@@ -1,7 +1,7 @@
 NVCC  = nvcc
 ARCH  = sm_60
 STD   = c++11
-FLAGS = -O3 -g -lineinfo -std=$(STD) -arch=$(ARCH) --expt-extended-lambda -Xcompiler="-Wall -fopenmp"
+FLAGS = -O3 -std=$(STD) -arch=$(ARCH) --expt-extended-lambda -Xcompiler="-Wall -fopenmp"
 
 plan:   test_plan.cu
 	$(NVCC) $(FLAGS) test_plan.cu -o test_plan
