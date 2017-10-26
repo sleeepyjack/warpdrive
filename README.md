@@ -1,37 +1,19 @@
-## Welcome to GitHub Pages
+# W a r p D r i v e
+## Massively Parallel Hashing on Multi-GPU Nodes
 
-You can use the [editor on GitHub](https://github.com/sleeepyjack/warpdrive/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+> "Warp speed, Mister Sulu." - **Captain James Tiberius Kirk**
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+## Introduction
+WarpDrive is a single- and multi-GPU hash table implementation written in C++ and CUDA-C.
+We provide a novel open-addressing probing scheme which adheres closely to the warp execution model of modern CUDA-enabled accelerators.
 
-### Markdown
+## Performance
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+## Usage
 
-```markdown
-Syntax highlighted code block
+## Issues
 
-# Header 1
-## Header 2
-### Header 3
+## License
+GPL-3.0
 
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/sleeepyjack/warpdrive/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+This software has been developed by [HPC @ JGU Mainz](https://www.hpc.informatik.uni-mainz.de/)
